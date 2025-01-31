@@ -53,6 +53,12 @@ const Vehicle = () => {
 
       if (response.status === 201) {
         Alert.alert('Success', 'Vehicle registered!');
+        setOwnerName('');
+        setVehicleType('');
+        setVehicleModel('');
+        setPhoneNumber('');
+        setEmail('');
+        setDistrict('');
         router.push('/vehicleList'); 
       } else {
         Alert.alert('Registration Failed', response.data?.error || 'Something went wrong1');
