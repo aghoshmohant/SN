@@ -8,12 +8,51 @@ import { hp, wp } from '../helper/common'
 import Input from '../components/Input'
 import SignIn from '../components/SignIn'
 import { Picker } from '@react-native-picker/picker'
+import axios from '../config/axiosConfig';
 
 
 
 const organization = () => {
   const router = useRouter();
-  const [selectedLanguage, setSelectedLanguage] = useState();
+  const [orgName, setOrgName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
+  const [district, setDistrict] = useState('');
+  
+
+  const handleOrg = async () => {
+      // Validate required fields
+      if (!orgName || !phoneNumber || !email || !district) {
+        Alert.alert('Error', 'Please fill in all fields');
+        return;
+      }
+
+      if (!/^\d{10}$/.test(phoneNumber)) {
+            Alert.alert('Error', 'Phone number must be exactly 10 digits');
+            return;
+          }
+      
+          try {
+            // Send registration request
+            const response = await axios.post('http://192.168.215.52:5000/api/organization', {
+              org_name: orgName,
+              phone_number: phoneNumber,
+              email: email,
+              district: district,
+            });    
+
+            if (response.status === 201) {
+                    Alert.alert('Success', 'Organization registered!');
+                    router.push('/home'); // Navigate to home page
+                  } else {
+                    Alert.alert('Registration Failed', response.data?.error || 'Something went wrong');
+                  }
+                } catch (error) {
+                  console.error('Vehicle Registration Error:', error.response?.data || error.message);
+                  Alert.alert('Registration Failed', error.response?.data?.error || 'Something went wrong.');
+            
+                }
+              };
 
   return (
     <ScreenWrapper>
@@ -31,18 +70,21 @@ const organization = () => {
 
           <View style={styles.inp}>
             <Text style={styles.text}>Organization Name</Text>
-          <Input placeholder='Organization Name' 
+          <Input placeholder='Organization Name'value={orgName} onChangeText={setOrgName}
           />
           </View>
           <View style={styles.inp}>
             <Text style={styles.text}>Phone Number</Text>
           <Input placeholder='Phone Number' keyboardType="numeric"
+          value={phoneNumber} onChangeText={setPhoneNumber}
           />
           </View>
 
           <View style={styles.inp}>
             <Text style={styles.text}>Email</Text>
           <Input placeholder='Email' keyboardType="email-address"  
+          value={email}
+          onChangeText={setEmail}
           />
           </View>
 
@@ -50,10 +92,8 @@ const organization = () => {
           <Text style={styles.text}>District</Text>
           <View style={styles.pic}>
           <Picker
-            selectedValue={selectedLanguage}
-             onValueChange={(itemValue, itemIndex) =>
-             setSelectedLanguage(itemValue)
-             }>
+            selectedValue={district}
+             onValueChange={setDistrict}>
               <Picker.Item label="District" value="null" style={{color:'rgba(0, 0, 0, 0.5)'}} />
               <Picker.Item label="Thiruvananthapuram" value="Thiruvananthapuram" />
               <Picker.Item label="Kollam" value="Kollam" />
@@ -73,7 +113,7 @@ const organization = () => {
           </View>
           </View>
           <View style={styles.button}>
-          <SignIn title='Submit' />
+          <SignIn title='Submit' onPress={handleOrg}/>
           </View>
         </View>
 
