@@ -53,7 +53,7 @@ const Vehicle = () => {
 
       if (response.status === 201) {
         Alert.alert('Success', 'Vehicle registered!');
-        router.push('/home'); // Navigate to home page
+        router.push('/vehicleList'); 
       } else {
         Alert.alert('Registration Failed', response.data?.error || 'Something went wrong1');
       }
