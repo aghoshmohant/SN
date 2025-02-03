@@ -1,64 +1,49 @@
-import { Alert, Image, Pressable, StyleSheet, Text, View, Linking } from 'react-native';
-import React, { useState } from 'react';
+import { Alert, Image, Pressable, StyleSheet, Text, View, Linking, ActivityIndicator, ScrollView, TextInput } from 'react-native';
+import React, { useState, useEffect } from 'react';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import BackButton from '../components/BackButton';
 import { hp, wp } from '../helper/common';
-import { Picker } from '@react-native-picker/picker';
+import axios from 'axios'; // Import Axios
 
-const camps = [
-  {
-    id: 1,
-    campName: 'Camp Alpha',
-    location: 'Thiruvananthapuram',
-    maxCapacity: 100,
-    currentPeople: 75,
-    mapLink: 'https://goo.gl/maps/xyz',
-    contactNumber: '+911234567890',
-  },
-  {
-    id: 2,
-    campName: 'Camp Beta',
-    location: 'Kollam',
-    maxCapacity: 150,
-    currentPeople: 120,
-    mapLink: 'https://goo.gl/maps/abc',
-    contactNumber: '+911234567891',
-  },
-  {
-    id: 3,
-    campName: 'Camp Gamma',
-    location: 'Ernakulam',
-    maxCapacity: 200,
-    currentPeople: 180,
-    mapLink: 'https://goo.gl/maps/def',
-    contactNumber: '+911234567892',
-  },
-  // Add more camps as needed
-];
-
-const districts = [
-  'Thiruvananthapuram',
-  'Kollam',
-  'Pathanamthitta',
-  'Alappuzha',
-  'Kottayam',
-  'Idukki',
-  'Ernakulam',
-  'Thrissur',
-  'Palakkad',
-  'Malappuram',
-  'Kozhikode',
-  'Wayanad',
-  'Kannur',
-  'Kasaragod',
-];
-
-const CampList = () => {
+const shelter = () => {
   const router = useRouter();
-  const [selectedDistrict, setSelectedDistrict] = useState('');
-  const [filteredCamps, setFilteredCamps] = useState(camps);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredCamps, setFilteredCamps] = useState([]);
+  const [allCamps, setAllCamps] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch camp data from the API using Axios
+  useEffect(() => {
+    const fetchCampData = async () => {
+      try {
+        const response = await axios.get('http://192.168.215.52:5000/api/camps'); // Replace with your API URL
+        setAllCamps(response.data); // Store the original data
+        setFilteredCamps(response.data); // Initially display all camps
+      } catch (err) {
+        setError('Error fetching camp data');
+        Alert.alert('Error', 'Could not fetch camp data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCampData();
+  }, []);
+
+  // Filter camps based on the search query
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    if (query) {
+      const filtered = allCamps.filter(camp => camp.district.toLowerCase().includes(query.toLowerCase()));
+      setFilteredCamps(filtered);
+    } else {
+      // If the search query is empty, display all camps
+      setFilteredCamps(allCamps);
+    }
+  };
 
   const handleMapPress = (mapLink) => {
     Linking.openURL(mapLink).catch(err => Alert.alert("Couldn't load page", err));
@@ -68,18 +53,34 @@ const CampList = () => {
     Linking.openURL(`tel:${contactNumber}`).catch(err => Alert.alert("Couldn't make a call", err));
   };
 
-  const handleSearch = () => {
-    if (selectedDistrict) {
-      const filtered = camps.filter(camp => camp.location === selectedDistrict);
-      setFilteredCamps(filtered);
-    } else {
-      setFilteredCamps(camps); // Reset to show all camps if no district is selected
-    }
-  };
+  // Loading state rendering
+  if (loading) {
+    return (
+      <ScreenWrapper>
+        <StatusBar style='dark' />
+        <View style={styles.container}>
+          <ActivityIndicator size="large" color="#4CAF50" />
+        </View>
+      </ScreenWrapper>
+    );
+  }
+
+  // Error state rendering
+  if (error) {
+    return (
+      <ScreenWrapper>
+        <StatusBar style='dark' />
+        <View style={styles.container}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      </ScreenWrapper>
+    );
+  }
 
   return (
     <ScreenWrapper>
       <StatusBar style='dark' />
+      <ScrollView>
       <View style={styles.container}>
         <View style={styles.header}>
           <BackButton router={router} />
@@ -90,41 +91,32 @@ const CampList = () => {
           <Text style={styles.Heading}>Camp List</Text>
         </View>
 
-        {/* District Picker and Search Button */}
+        {/* Search Bar */}
         <View style={styles.searchContainer}>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={selectedDistrict}
-              onValueChange={(itemValue) => setSelectedDistrict(itemValue)}
-              style={styles.picker}
-            >
-              <Picker.Item label="Select District" value="" />
-              {districts.map((district, index) => (
-                <Picker.Item key={index} label={district} value={district} />
-              ))}
-            </Picker>
-          </View>
-
-          <Pressable style={styles.searchButton} onPress={handleSearch}>
-            <Text style={styles.searchButtonText}>Search</Text>
-          </Pressable>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by district"
+            value={searchQuery}
+            onChangeText={handleSearch} // Filter camps on text change
+          />
         </View>
 
         {/* Camp List */}
         <View style={styles.listContainer}>
           {filteredCamps.map((camp) => (
             <View key={camp.id} style={styles.campContainer}>
-              <Text style={styles.campText}><Text style={styles.boldText}>Camp Name:</Text> {camp.campName}</Text>
+              <Text style={styles.campText}><Text style={styles.boldText}>Camp Name:</Text> {camp.camp_name}</Text>
+              <Text style={styles.campText}><Text style={styles.boldText}>Current People:</Text> {camp.current_people}</Text>
+              <Text style={styles.campText}><Text style={styles.boldText}>Max Capacity:</Text> {camp.max_capacity}</Text>
               <Text style={styles.campText}><Text style={styles.boldText}>Location:</Text> {camp.location}</Text>
-              <Text style={styles.campText}><Text style={styles.boldText}>Max Capacity:</Text> {camp.maxCapacity}</Text>
-              <Text style={styles.campText}><Text style={styles.boldText}>Current People:</Text> {camp.currentPeople}</Text>
+              <Text style={styles.campText}><Text style={styles.boldText}>District:</Text> {camp.district}</Text>
 
               <View style={styles.buttonContainer}>
-                <Pressable style={styles.button} onPress={() => handleMapPress(camp.mapLink)}>
+                <Pressable style={styles.button} onPress={() => handleMapPress(camp.map_link)}>
                   <Text style={styles.buttonText}>View on Map</Text>
                 </Pressable>
 
-                <Pressable style={styles.button} onPress={() => handleCallPress(camp.contactNumber)}>
+                <Pressable style={styles.button} onPress={() => handleCallPress(camp.contact_number)}>
                   <Text style={styles.buttonText}>Call Camp</Text>
                 </Pressable>
               </View>
@@ -132,13 +124,21 @@ const CampList = () => {
           ))}
         </View>
       </View>
+      </ScrollView>
     </ScreenWrapper>
   );
 };
 
-export default CampList;
+export default shelter;
 
 const styles = StyleSheet.create({
+  // Same styles as before, with minor updates
+  errorText: {
+    color: 'red',
+    textAlign: 'center',
+    fontSize: 18,
+    marginTop: 20,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -158,37 +158,19 @@ const styles = StyleSheet.create({
   },
   container: {
     backgroundColor: '#D9F8DB',
-    height: hp(100),
+    height: '100%',
   },
   searchContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 15,
     marginTop: 20,
   },
-  pickerContainer: {
-    flex: 1,
+  searchInput: {
+    height: hp(6),
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 5,
-    marginRight: 10,
-  },
-  picker: {
-    height: hp(6),
-  },
-  searchButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 5,
-    justifyContent: 'center', // Center text vertically
-    alignItems: 'center', // Center text horizontally
-  },
-  searchButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16, // Adjust font size if needed
+    paddingHorizontal: 10,
+    fontSize: 16,
   },
   listContainer: {
     paddingTop: 20,
