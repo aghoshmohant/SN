@@ -1,39 +1,32 @@
-import { Alert, Image, Pressable, StyleSheet, Text, View, Linking } from 'react-native';
-import React, { useRef, useState } from 'react';
+import { Alert, Image, Pressable, StyleSheet, Text, View, Linking, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import BackButton from '../components/BackButton';
 import { hp, wp } from '../helper/common';
+import axios from 'axios'; // Import Axios for API calls
 
-
-const requirements = [
-  {
-    id: 1,
-    itemName: 'Tents',
-    quantity: 10,
-    category: 'Shelter',
-    campName: 'Camp Alpha',
-    location: 'Thiruvananthapuram',
-    mapLink: 'https://goo.gl/maps/xyz',
-    phoneNumber: '+911234567890',
-  },
-  {
-    id: 2,
-    itemName: 'Blankets',
-    quantity: 50,
-    category: 'Bedding',
-    campName: 'Camp Beta',
-    location: 'Kollam',
-    mapLink: 'https://goo.gl/maps/abc',
-    phoneNumber: '+911234567891',
-  },
-  // Add more items as needed
-];
-
-const Organization = () => {
+const requirements = () => {
   const router = useRouter();
-  const [selectedLanguage, setSelectedLanguage] = useState();
+  const [requirements, setRequirements] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchRequirements();
+  }, []);
+
+  const fetchRequirements = async () => {
+    try {
+      const response = await axios.get('http://192.168.215.52:5000/api/requirements'); // Replace with your backend URL
+      setRequirements(response.data);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to fetch requirements');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleMapPress = (mapLink) => {
     Linking.openURL(mapLink).catch(err => Alert.alert("Couldn't load page", err));
@@ -45,44 +38,49 @@ const Organization = () => {
 
   return (
     <ScreenWrapper>
-      <StatusBar style='dark' />
+      <StatusBar style="dark" />
       <View style={styles.container}>
         <View style={styles.header}>
           <BackButton router={router} />
-          <Image resizeMode='contain' source={require('../assets/images/SafeNetText.png')} style={styles.logo} />
+          <Image resizeMode="contain" source={require('../assets/images/SafeNetText.png')} style={styles.logo} />
         </View>
+        <Text style={styles.Heading}>Requirement List</Text>
+        {loading ? (
+          <ActivityIndicator size="large" color="#4CAF50" style={{ marginTop: 20 }} />
+        ) : (
+          <ScrollView style={styles.listContainer}>
+            {requirements.length > 0 ? (
+              requirements.map((item) => (
+                <View key={item.id} style={styles.itemContainer}>
+                  <Text style={styles.itemText}><Text style={styles.boldText}>Item:</Text> {item.item_name}</Text>
+                  <Text style={styles.itemText}><Text style={styles.boldText}>Quantity:</Text> {item.quantity}</Text>
+                  <Text style={styles.itemText}><Text style={styles.boldText}>Category:</Text> {item.category}</Text>
+                  <Text style={styles.itemText}><Text style={styles.boldText}>Camp:</Text> {item.camp_name}</Text>
+                  <Text style={styles.itemText}><Text style={styles.boldText}>Location:</Text> {item.location}</Text>
+                  <Text style={styles.itemText}><Text style={styles.boldText}>District:</Text> {item.district}</Text>
 
-        <View>
-          <Text style={styles.Heading}>Requirement List</Text>
-        </View>
+                  <View style={styles.buttonContainer}>
+                    <Pressable style={styles.button} onPress={() => handleMapPress(item.map_link)}>
+                      <Text style={styles.buttonText}>View on Map</Text>
+                    </Pressable>
 
-        <View style={styles.listContainer}>
-          {requirements.map((item) => (
-            <View key={item.id} style={styles.itemContainer}>
-              <Text style={styles.itemText}><Text style={styles.boldText}>Item:</Text> {item.itemName}</Text>
-              <Text style={styles.itemText}><Text style={styles.boldText}>Quantity:</Text> {item.quantity}</Text>
-              <Text style={styles.itemText}><Text style={styles.boldText}>Category:</Text> {item.category}</Text>
-              <Text style={styles.itemText}><Text style={styles.boldText}>Camp:</Text> {item.campName}</Text>
-              <Text style={styles.itemText}><Text style={styles.boldText}>Location:</Text> {item.location}</Text>
-
-              <View style={styles.buttonContainer}>
-                <Pressable style={styles.button} onPress={() => handleMapPress(item.mapLink)}>
-                  <Text style={styles.buttonText}>View on Map</Text>
-                </Pressable>
-
-                <Pressable style={styles.button} onPress={() => handleCallPress(item.phoneNumber)}>
-                  <Text style={styles.buttonText}>Call Camp</Text>
-                </Pressable>
-              </View>
-            </View>
-          ))}
-        </View>
+                    <Pressable style={styles.button} onPress={() => handleCallPress(item.phone_number)}>
+                      <Text style={styles.buttonText}>Call Camp</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.noDataText}>No requirements found.</Text>
+            )}
+          </ScrollView>
+        )}
       </View>
     </ScreenWrapper>
   );
 };
 
-export default Organization;
+export default requirements;
 
 const styles = StyleSheet.create({
   header: {
@@ -126,7 +124,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   boldText: {
-    fontWeight: 'bold', // Make column names bold
+    fontWeight: 'bold',
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -144,5 +142,11 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontWeight: 'bold',
+  },
+  noDataText: {
+    textAlign: 'center',
+    fontSize: 18,
+    color: 'gray',
+    marginTop: 20,
   },
 });
