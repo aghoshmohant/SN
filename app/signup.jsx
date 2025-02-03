@@ -1,5 +1,5 @@
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import React, { useState } from 'react';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View, Alert  } from 'react-native';
+import React, { useState, useRef } from 'react';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -10,33 +10,109 @@ import SignIn from '../components/SignIn';
 import Checkbox from 'expo-checkbox';
 import RNDateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker'
+import axios from '../config/axiosConfig'; // Import your axios instance
 
 const signup = () => {
   const router = useRouter();
+
+ // Refs for input fields
+ const nameRef = useRef('');
+ const emailRef = useRef('');
+ const phoneRef = useRef('');
+ const passwordRef = useRef('');
+
+
   const [date, setDate] = useState(new Date());
   const [formattedDate, setFormattedDate] = useState(''); // State to hold the formatted date
   const [showPicker, setShowPicker] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState();
+  const [district, setDistrict] = useState([]);
+  const [bloodGroup, setBloodGroup] = useState([]);
+  const [isSelected, setSelection] = useState(false);
 
   const toggleDatePicker = () => {
     setShowPicker(!showPicker);
   };
 
-  const onChange = ({ type }, selectedDate) => {
-    if (type === 'set') {
-      const currentDate = selectedDate || date;
-      setDate(currentDate);
-
-      // Format the selected date to display
-      const formatted = currentDate.toLocaleDateString('en-GB'); // Format as DD/MM/YYYY
-      setFormattedDate(formatted);
-
-      toggleDatePicker(); // Close the picker after date selection
-    } else {
-      toggleDatePicker();
+  const onChange = (event, selectedDate) => {
+    setShowPicker(false); // Close the picker once a date is selected
+  
+    if (selectedDate) {
+      setDate(selectedDate); // Update the `date` state
+      // Format the selected date (e.g., DD/MM/YYYY)
+      const formatted = `${selectedDate.getDate()}/${selectedDate.getMonth() + 1}/${selectedDate.getFullYear()}`;
+      setFormattedDate(formatted); // Update the `formattedDate` state
     }
   };
-  const [isSelected, setSelection] = useState(false);
+
+  const handleSignup = async () => {
+    // Check if any required field is empty
+    if (
+      !nameRef.current ||
+      !emailRef.current ||
+      !passwordRef.current ||
+      !phoneRef.current ||
+      !district ||
+      !formattedDate || // Ensure date is formatted and available
+      !bloodGroup
+    ) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+  
+    // Validate email format
+    if (!/^\S+@\S+\.\S+$/.test(emailRef.current)) {
+      Alert.alert('Error', 'Invalid email format');
+      return;
+    }
+  
+    // Validate phone number
+    if (phoneRef.current.length !== 10 || isNaN(phoneRef.current)) {
+      Alert.alert('Error', 'Phone number must be 10 digits');
+      return;
+    }
+  
+    // Validate password strength
+    if (passwordRef.current.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters');
+      return;
+    }
+  
+    try {
+      // Send signup request
+      const response = await axios.post('/auth/signup', {
+        full_name: nameRef.current,
+        email: emailRef.current,
+        phone_number: phoneRef.current,
+        district: district,
+        dob: formattedDate, // Use the formatted date
+        blood_group: bloodGroup,
+        donate_blood: isSelected, // Donation preference
+        password: passwordRef.current,
+      });
+  
+      // Check response status
+      if (response.status === 201) {
+        Alert.alert('Success', 'Account created successfully!');
+        router.push('/login'); // Navigate to login page
+      } else {
+        Alert.alert('Signup Failed', response.data?.error || 'Something went wrong');
+      }
+    } catch (error) {
+      if (error.response?.status === 400 && error.response?.data?.error === 'User already exists') {
+        Alert.alert('Error', 'An account with this email already exists. Please use a different email.');
+      } else {
+        Alert.alert('Signup Failed', error.response?.data?.error || 'Something went wrong.');
+    }
+  }
+  };
+  
+  
+  
+  
+  
+  
+ 
 
   return (
     <ScreenWrapper>
@@ -55,27 +131,22 @@ const signup = () => {
           <View style={styles.form}>
             <View style={styles.inp}>
               <Text style={styles.text}>Full Name</Text>
-              <Input placeholder="Full Name" />
+              <Input placeholder="Full Name" onChangeText={(value) => (nameRef.current = value)} />
             </View>
 
             <View style={styles.inp}>
               <Text style={styles.text}>Email</Text>
-              <Input placeholder="Email Address" keyboardType="email-address" />
+              <Input placeholder="Email Address" keyboardType="email-address" onChangeText={(value) => (emailRef.current = value)} />
             </View>
 
             <View style={styles.inp}>
               <Text style={styles.text}>Phone Number</Text>
-              <Input placeholder="Phone Number" keyboardType="numeric" />
+              <Input placeholder="Phone Number" keyboardType="numeric" onChangeText={(value) => (phoneRef.current = value)} />
             </View>
-
-            <View style={styles.inp}>
+          <View style={styles.inp}>
           <Text style={styles.text}>District</Text>
           <View style={styles.pic}>
-          <Picker
-            selectedValue={selectedLanguage}
-             onValueChange={(itemValue, itemIndex) =>
-             setSelectedLanguage(itemValue)
-             }>
+          <Picker selectedValue={district} onValueChange={setDistrict}>
               <Picker.Item label="District" value="null" style={{color:'rgba(0, 0, 0, 0.5)'}} />
               <Picker.Item label="Thiruvananthapuram" value="Thiruvananthapuram" />
               <Picker.Item label="Kollam" value="Kollam" />
@@ -94,7 +165,6 @@ const signup = () => {
           </Picker>
           </View>
           </View>
-
             <View style={styles.inp}>
               <Text style={styles.text}>Date Of Birth</Text>
 
@@ -108,7 +178,7 @@ const signup = () => {
               )}
               {!showPicker && (
                 <Pressable onPress={toggleDatePicker}>
-                  <Input placeholder="Date of Birth" value={formattedDate} editable={false} />
+                  <Input placeholder="Date of Birth" value={formattedDate} editable={false}  />
                 </Pressable>
               )}
             </View>
@@ -116,11 +186,7 @@ const signup = () => {
             <View style={styles.inp}>
           <Text style={styles.text}>Blood Group</Text>
           <View style={styles.pic}>
-          <Picker
-            selectedValue={selectedLanguage}
-             onValueChange={(itemValue, itemIndex) =>
-             setSelectedLanguage(itemValue)
-             }>
+          <Picker selectedValue={bloodGroup} onValueChange={setBloodGroup}>
         <Picker.Item label="Select Blood Group" value="null" style={{color:'rgba(0, 0, 0, 0.5)'}} />
         <Picker.Item label="A+" value="A+" />
         <Picker.Item label="A-" value="A-" />
@@ -133,7 +199,6 @@ const signup = () => {
         </Picker>
         </View>
         </View>
-
             <View style={styles.check}>
               <Checkbox value={isSelected}
                onValueChange={setSelection} 
@@ -143,11 +208,11 @@ const signup = () => {
 
             <View style={styles.inp}>
               <Text style={styles.text}>Password</Text>
-              <Input placeholder="Password" secureTextEntry={true}/>
+              <Input placeholder="Password" onChangeText={(value) => (passwordRef.current = value)} />
             </View>
 
             <View style={styles.button}>
-              <SignIn title="Submit" />
+              <SignIn title="Submit" onPress={handleSignup}  />
             </View>
           </View>
 
