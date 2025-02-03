@@ -1,32 +1,39 @@
 import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, Modal, Linking, Image } from 'react-native';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { StatusBar } from 'expo-status-bar';
 import BackButton from '../components/BackButton';
 import { useRouter } from 'expo-router';
 import { Picker } from '@react-native-picker/picker';
+import axios from '../config/axiosConfig'; // Import axios
 
+// Updated Blood Donor Screen
 const bloodDonor = () => {
-  // Declare donors array without the state field
-  const donors = [
-    { name: 'John Doe', phone: '9876543210', bloodGroup: 'O+', district: 'Manhattan' },
-    { name: 'Alice Johnson', phone: '9123456789', bloodGroup: 'A-', district: 'Downtown' },
-    { name: 'Michael Smith', phone: '9012345678', bloodGroup: 'B+', district: 'South Side' },
-    { name: 'Emma Davis', phone: '9871234567', bloodGroup: 'AB-', district: 'East End' },
-    { name: 'Robert Wilson', phone: '9543216789', bloodGroup: 'O-', district: 'North Gate' },
-    { name: 'Sophia Martinez', phone: '9687456321', bloodGroup: 'A+', district: 'West Village' },
-  ];
-
   const router = useRouter();
+  const [donors, setDonors] = useState([]);
   const [searchText, setSearchText] = useState('');
   const [selectedBloodGroup, setSelectedBloodGroup] = useState('');
   const [isFilterVisible, setIsFilterVisible] = useState(false);
+
+  // Fetch the list of donors from the API
+  useEffect(() => {
+    const fetchDonors = async () => {
+      try {
+        const response = await axios.get('http://192.168.215.52:5000/api/donors'); // Use axios to fetch data
+        setDonors(response.data); // Update state with fetched donors
+      } catch (error) {
+        console.error('Error fetching donors:', error);
+      }
+    };
+
+    fetchDonors();
+  }, []);
 
   // Filter donors based on district and blood group
   const filterDonors = () => {
     return donors.filter((donor) =>
       donor.district.toLowerCase().includes(searchText.toLowerCase()) &&
-      (donor.bloodGroup === selectedBloodGroup || selectedBloodGroup === '')
+      (donor.blood_group === selectedBloodGroup || selectedBloodGroup === '')
     );
   };
 
@@ -63,12 +70,12 @@ const bloodDonor = () => {
               {filterDonors().map((donor, index) => (
                 <View key={index} style={styles.donorCard}>
                   <View style={styles.donorInfo}>
-                    <Text style={styles.donorName}>{donor.name}</Text>
-                    <Text style={[styles.donorDetails, styles.bloodGroup]}>Blood Group: {donor.bloodGroup}</Text>
+                    <Text style={styles.donorName}>{donor.full_name}</Text>
+                    <Text style={[styles.donorDetails, styles.bloodGroup]}>Blood Group: {donor.blood_group}</Text>
                     <Text style={styles.donorDetails}>District: {donor.district}</Text>
-                    <Text style={styles.donorDetails}>{donor.phone}</Text>
+                    <Text style={styles.donorDetails}>{donor.phone_number}</Text>
                   </View>
-                  <TouchableOpacity style={styles.callButton} onPress={() => handleCall(donor.phone)}>
+                  <TouchableOpacity style={styles.callButton} onPress={() => handleCall(donor.phone_number)}>
                     <Text style={styles.callButtonText}>Call</Text>
                   </TouchableOpacity>
                 </View>
