@@ -1,26 +1,41 @@
-import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, Modal, Linking, Image } from 'react-native';
-import React, { useState } from 'react';
+import { Alert, Image, ScrollView, StyleSheet, Text, View, TextInput, TouchableOpacity, Linking } from 'react-native';
+import React, { useState, useEffect } from 'react';
 import ScreenWrapper from '../components/ScreenWrapper';
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import BackButton from '../components/BackButton';
-import { useRouter } from 'expo-router';
+import axios from '../config/axiosConfig';
 
-const organizationList = () => {
-  const organizations = [
-    { name: 'Red Cross', phone: '9876543210', email: 'contact@redcross.org', district: 'Manhattan' },
-    { name: 'Disaster Relief Fund', phone: '9123456789', email: 'help@drf.org', district: 'Downtown' },
-    { name: 'Global Aid', phone: '9012345678', email: 'support@globalaid.org', district: 'South Side' },
-    { name: 'Relief Corps', phone: '9871234567', email: 'info@reliefcorps.org', district: 'East End' },
-    { name: 'Humanitarian Help', phone: '9543216789', email: 'assistance@humanhelp.org', district: 'North Gate' },
-  ];
-
+const OrganizationList = () => {
   const router = useRouter();
+  const [organizations, setOrganizations] = useState([]);
   const [searchText, setSearchText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchOrganizations = async () => {
+      try {
+        const response = await axios.get('http://192.168.215.52:5000/api/organization');
+        setOrganizations(response.data.reverse());  // Reverse the array to show the last entered first
+        setError(null);
+      } catch (error) {
+        console.error('Error fetching organizations:', error);
+        setError('Failed to fetch organization data. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrganizations();
+  }, []);
 
   const filterOrganizations = () => {
-    return organizations.filter((org) =>
-      org.district.toLowerCase().includes(searchText.toLowerCase()) || searchText === ''
+    const filtered = organizations.filter((org) =>
+      org.district.toLowerCase().includes(searchText.toLowerCase()) ||
+      searchText === ''
     );
+    return filtered;
   };
 
   const handleCall = (phone) => {
@@ -30,6 +45,26 @@ const organizationList = () => {
   const handleEmail = (email) => {
     Linking.openURL(`mailto:${email}`);
   };
+
+  if (loading) {
+    return (
+      <ScreenWrapper>
+        <View style={styles.loadingContainer}>
+          <Text>Loading...</Text>
+        </View>
+      </ScreenWrapper>
+    );
+  }
+
+  if (error) {
+    return (
+      <ScreenWrapper>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      </ScreenWrapper>
+    );
+  }
 
   return (
     <ScreenWrapper>
@@ -45,13 +80,14 @@ const organizationList = () => {
               style={styles.searchBar}
               placeholder="Search by District"
               value={searchText}
-              onChangeText={(text) => setSearchText(text)}
+              onChangeText={(text) => setSearchText(text)}  // Update search text
             />
 
             <ScrollView style={styles.listContainer}>
               {filterOrganizations().map((org, index) => (
                 <View key={index} style={styles.orgCard}>
-                  <View style={styles.buttonContainer}><TouchableOpacity onPress={() => handleEmail(org.email)}>
+                  <View style={styles.buttonContainer}>
+                    <TouchableOpacity onPress={() => handleEmail(org.email)}>
                       <Image source={require('../assets/images/email.png')} style={styles.icon} />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => handleCall(org.phone)}>
@@ -59,9 +95,9 @@ const organizationList = () => {
                     </TouchableOpacity>
                   </View>
                   <View style={styles.orgInfo}>
-                    <Text style={styles.orgName}>{org.name}</Text>
+                    <Text style={styles.orgName}>{org.org_name}</Text>
                     <Text style={styles.orgDetails}>District: {org.district}</Text>
-                    <Text style={styles.orgDetails}>{org.phone}</Text>
+                    <Text style={styles.orgDetails}>{org.phone_number}</Text>
                     <Text style={styles.orgDetails}>{org.email}</Text>
                   </View>
                 </View>
@@ -74,7 +110,7 @@ const organizationList = () => {
   );
 };
 
-export default organizationList;
+export default OrganizationList;
 
 const styles = StyleSheet.create({
   container: {
@@ -141,5 +177,19 @@ const styles = StyleSheet.create({
     height: 30,
     resizeMode: 'contain',
     marginRight: 10,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 16,
   },
 });

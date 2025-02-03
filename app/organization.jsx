@@ -43,7 +43,11 @@ const organization = () => {
 
             if (response.status === 201) {
                     Alert.alert('Success', 'Organization registered!');
-                    router.push('/home'); // Navigate to home page
+                    setOrgName('');
+                    setPhoneNumber('');
+                    setEmail('');
+                    setDistrict('');
+                    router.push('/organizationList'); // Navigate to home page
                   } else {
                     Alert.alert('Registration Failed', response.data?.error || 'Something went wrong');
                   }
